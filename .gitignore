@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Environment Variables
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Type checking
+.mypy_cache/
+.pyre/
+.ruff_cache/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Alembic
+alembic/versions/*.pyc
+
+# SQLite (nếu dùng)
+*.db
+*.sqlite3
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Uploads
+uploads/
+media/
+
+# Temporary files
+*.tmp
+*.temp
+
+# PostgreSQL dump
+*.sql
+
+# Docker
+docker-compose.override.yml
+
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+
+# Windows
+desktop.ini
