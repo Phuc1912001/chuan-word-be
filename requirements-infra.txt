@@ -1,0 +1,5 @@
+# Dependencies cho GĐ0 (async/queue/storage).
+# Cài kèm: pip install -r requirements.txt -r requirements-infra.txt
+celery==5.4.0
+redis==5.2.1
+boto3==1.35.99

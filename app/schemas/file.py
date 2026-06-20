@@ -3,6 +3,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 
+
 class FileResponse(BaseModel):
     id: int
     filename: str
@@ -11,3 +12,8 @@ class FileResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UploadResponse(BaseModel):
+    message: str
+    file: FileResponse

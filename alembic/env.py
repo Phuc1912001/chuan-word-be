@@ -5,9 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 from app.db.base import Base
-from app.models.file import UploadedFile
-from app.models.analysis_detail import AnalysisDetail
-from app.models.analysis_result import AnalysisResult
+import app.models  # noqa: F401 — đăng ký mọi model vào Base.metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

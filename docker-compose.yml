@@ -1,0 +1,34 @@
+# GĐ0: api + worker + redis. DB dùng Neon (qua SQLALCHEMY_DATABASE_URL trong .env).
+# Chạy: docker compose up --build
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    volumes:
+      - uploads:/app/uploads
+
+  worker:
+    build: .
+    command: celery -A app.worker.celery_app:celery_app worker --loglevel=info
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  uploads:
