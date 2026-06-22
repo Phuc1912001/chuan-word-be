@@ -107,3 +107,23 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         print("GENERAL WEBHOOK ERROR:", repr(e))
         return {"error": str(e)}
+    
+@router.get("/status/{order_code}")
+def get_payment_status(order_code: int, db: Session = Depends(get_db)):
+    payment = db.query(Payment).filter(
+        Payment.order_code == order_code
+    ).first()
+
+    if not payment:
+        return {
+            "success": False,
+            "message": "Payment not found"
+        }
+
+    return {
+        "success": True,
+        "orderCode": payment.order_code,
+        "amount": payment.amount,
+        "status": payment.status,
+        "checkoutUrl": payment.checkout_url
+    }
