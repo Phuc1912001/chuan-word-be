@@ -69,19 +69,18 @@ async def create_payment(db: Session = Depends(get_db)):
 @router.post("/webhook")
 async def webhook(request: Request, db: Session = Depends(get_db)):
     try:
-        print("🔥 WEBHOOK HIT")  
-        body = await request.body()
-        print("BODY:", body)
-        if not body:
-            return {"message": "empty webhook"}
+        print("🔥 WEBHOOK HIT")
 
         data = await request.json()
         print("DATA:", data)
-        webhook_data = client.webhooks.verify(data)
 
-        order_code = getattr(webhook_data, "orderCode", None)
-        code = getattr(webhook_data, "code", None)
+        payload = data.get("data", {})
+
+        order_code = payload.get("orderCode")
+        code = payload.get("code")
+
         print("ORDER:", order_code)
+
         payment = db.query(Payment).filter(
             Payment.order_code == order_code
         ).first()
@@ -89,23 +88,15 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
         if not payment:
             return {"message": "payment not found"}
 
-        if code == "00":
-            payment.status = "SUCCESS"
-            print(f"ORDER {order_code} SUCCESS")
-        else:
-            payment.status = "FAILED"
-            print(f"ORDER {order_code} FAILED")
-
+        payment.status = "SUCCESS" if code == "00" else "FAILED"
         db.commit()
+
+        print("✅ UPDATED:", payment.status)
 
         return {"message": "ok"}
 
-    except WebhookError as e:
-        print("WEBHOOK ERROR (PayOS):", str(e))
-        return {"error": str(e)}
-
     except Exception as e:
-        print("GENERAL WEBHOOK ERROR:", repr(e))
+        print("ERROR:", repr(e))
         return {"error": str(e)}
     
 @router.get("/status/{order_code}")
