@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     # True => chạy task ngay trong tiến trình gọi (dev/test, không cần Redis/worker)
     CELERY_TASK_ALWAYS_EAGER: bool = False
 
+    PAYOS_CLIENT_ID: str| None = None
+    PAYOS_API_KEY: str | None = None
+    PAYOS_CHECKSUM_KEY: str| None = None
+    FRONTEND_URL: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
