@@ -9,6 +9,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from app.models.statistics import Statistic
 
 from app.core.config import settings
 from app.db.session import get_db
@@ -75,7 +76,15 @@ def fix_endpoint(file_id: int, preset: str | None = None, db: Session = Depends(
         fix_file(local, spec, out_path)
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Không chuẩn hóa được file: {e}")
+    # COUNT DOWNLOAD
+    stat = db.query(Statistic).filter(Statistic.id == 1).first()
 
+    if not stat:
+        stat = Statistic(id=1, total_downloads=0)
+        db.add(stat)
+
+    stat.total_downloads += 1
+    db.commit()
     download_name = f"chuan-hoa_{uploaded.filename or 'document.docx'}"
     return FileResponse(out_path, filename=download_name, media_type=DOCX_MEDIA_TYPE)
 
