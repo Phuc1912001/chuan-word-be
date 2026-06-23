@@ -102,3 +102,11 @@ def preview_endpoint(file_id: int, preset: str | None = None, db: Session = Depe
         raise HTTPException(status_code=422, detail=f"Không tạo được bản xem trước: {e}")
 
     return FileResponse(pdf_path, media_type="application/pdf")
+
+@router.get("/stats")
+def get_stats(db: Session = Depends(get_db)):
+    stat = db.query(Statistic).filter(Statistic.id == 1).first()
+
+    return {
+        "total_downloads": stat.total_downloads if stat else 0
+    }
