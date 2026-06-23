@@ -27,7 +27,7 @@ async def create_payment(db: Session = Depends(get_db)):
             amount=50000,
             description="Nang cap goi ChuanWord",
             cancel_url=f"{settings.FRONTEND_URL}/quy-trinh/thanh-toan",
-            return_url=f"{settings.FRONTEND_URL}/quy-trinh/thanh-toan",
+            return_url=f"{settings.FRONTEND_URL}/quy-trinh/ket-qua",
         )
 
         response = client.payment_requests.create(payment_data=payment_data)
