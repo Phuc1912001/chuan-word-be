@@ -20,3 +20,10 @@ class AnalyzeResponse(BaseModel):
     score: float
     total_errors: int
     errors: list[AnalysisErrorOut] = []
+
+
+class FileUrlResponse(BaseModel):
+    """Trả URL tải/xem file kết quả (presigned S3 hoặc link /files local)."""
+
+    url: str
+    filename: str | None = None

@@ -1,9 +1,7 @@
 FROM python:3.11-slim
 
-# LibreOffice cho bước xem trước (docx -> pdf)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libreoffice-writer \
-    && rm -rf /var/lib/apt/lists/*
+# Preview render .docx ở phía FE (docx-preview) → KHÔNG cần LibreOffice.
+# Chỉ thêm libreoffice-writer nếu sau này bật lại xuất PDF server-side.
 
 WORKDIR /app
 

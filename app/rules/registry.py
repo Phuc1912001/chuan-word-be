@@ -2,6 +2,7 @@
 
 from app.rules.alignment import AlignmentRule
 from app.rules.base import Rule
+from app.rules.capitalization import CapitalizationRule
 from app.rules.font import FontRule, FontSizeRule
 from app.rules.indent import IndentRule
 from app.rules.margin import MarginRule
@@ -18,4 +19,5 @@ def default_rules() -> list[Rule]:
         PageSizeRule(),
         AlignmentRule(),
         IndentRule(),
+        CapitalizationRule(),
     ]

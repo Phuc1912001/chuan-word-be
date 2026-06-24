@@ -84,3 +84,23 @@ def test_error_shape_matches_frontend(tmp_path):
     assert issue.rule_code
     assert issue.message
     assert issue.suggestion  # rule định dạng luôn kèm gợi ý sửa
+
+
+def test_capitalization_detects_and_fixes(tmp_path):
+    from app.rules.capitalization import CapitalizationRule
+    from app.services.docx_parser import load_docx
+
+    path = tmp_path / "cap.docx"
+    doc = Document()
+    doc.add_paragraph("xin chào. hôm nay trời đẹp.")  # 2 câu chưa viết hoa
+    doc.save(str(path))
+
+    pd = load_docx(str(path))
+    rule = CapitalizationRule()
+    spec = get_preset()
+
+    assert rule.check(pd, spec), "phải phát hiện lỗi viết hoa đầu câu"
+
+    rule.fix(pd, spec)
+    assert rule.check(pd, spec) == [], "sau fix không còn lỗi viết hoa đầu câu"
+    assert pd.paragraphs[0].text.startswith("Xin chào. Hôm nay")
