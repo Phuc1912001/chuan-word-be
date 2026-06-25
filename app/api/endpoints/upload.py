@@ -24,7 +24,7 @@ async def upload_file(
     # tên lưu duy nhất (uuid) để tránh ghi đè; tên gốc giữ trong cột filename
     ext = os.path.splitext(file.filename or "")[1] or ".docx"
     stored_name = f"{uuid.uuid4().hex}{ext}"
-    file_path = get_storage().save(stored_name, data)
+    file_path = get_storage().save(stored_name, data, content_type=file.content_type)
 
     new_file = UploadedFile(
         filename=file.filename,

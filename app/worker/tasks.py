@@ -42,8 +42,12 @@ def run_analysis(job_id: int):
             db.commit()
             return {"error": "file missing", "job_id": job_id}
 
-        local_path = get_storage().localize(uploaded.file_path)
-        report = analyze_file(local_path, get_preset(job.template_key))
+        storage = get_storage()
+        local_path = storage.localize(uploaded.file_path)
+        try:
+            report = analyze_file(local_path, get_preset(job.template_key))
+        finally:
+            storage.cleanup_local(uploaded.file_path, local_path)
 
         job.summary = report.by_rule
         job.details = [_issue_to_dict(i, iss) for i, iss in enumerate(report.issues)]

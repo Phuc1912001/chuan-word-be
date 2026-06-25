@@ -1,24 +1,23 @@
 # app/api/endpoints/analyze.py
 #
-# Endpoint SYNC tiện cho dev/FE hiện tại. Phân tích KHÔNG còn persist xuống bảng
-# (lỗi là ephemeral, tính lại được) — chỉ trả kết quả. Lịch sử/lưu trữ dùng luồng /jobs (JSONB).
+# /analyze: phân tích sync, KHÔNG persist (trả kết quả).
+# /fix, /preview: tạo file kết quả → lưu lên storage (S3/local) → trả URL
+#   (presigned nếu S3; link /files nếu local). Dọn temp sau khi xử lý.
 
 import os
+import tempfile
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 from app.models.statistics import Statistic
 
-from app.core.config import settings
 from app.db.session import get_db
 from app.models.file import UploadedFile
 from app.rules.presets import get_preset
-from app.schemas.analysis import AnalysisErrorOut, AnalyzeResponse
+from app.schemas.analysis import AnalysisErrorOut, AnalyzeResponse, FileUrlResponse
 from app.services.analyzer import analyze_file
 from app.services.fixer import fix_file
-from app.services.preview import docx_to_pdf
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/analyze", tags=["Analyze"])
@@ -26,27 +25,47 @@ router = APIRouter(prefix="/analyze", tags=["Analyze"])
 DOCX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 
-def _get_local_path(db: Session, file_id: int) -> tuple[str, UploadedFile]:
+def _get_uploaded(db: Session, file_id: int) -> UploadedFile:
     uploaded = db.query(UploadedFile).filter(UploadedFile.id == file_id).first()
     if uploaded is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy file")
+    return uploaded
+
+
+def _localize(storage, uploaded: UploadedFile) -> str:
     try:
-        local = get_storage().localize(uploaded.file_path)
+        local = storage.localize(uploaded.file_path)
     except Exception:
         raise HTTPException(status_code=410, detail="File không còn tồn tại trên hệ thống")
     if not os.path.exists(local):
         raise HTTPException(status_code=410, detail="File không còn tồn tại trên hệ thống")
-    return local, uploaded
+    return local
+
+
+def _safe_remove(path: str | None) -> None:
+    try:
+        if path and os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+
+def _local_url(request: Request, key: str) -> str:
+    return f"{str(request.base_url).rstrip('/')}/files/{key}"
 
 
 @router.post("/{file_id}", response_model=AnalyzeResponse)
 def analyze_endpoint(file_id: int, preset: str | None = None, db: Session = Depends(get_db)):
-    local, _ = _get_local_path(db, file_id)
+    uploaded = _get_uploaded(db, file_id)
+    storage = get_storage()
+    local = _localize(storage, uploaded)
     spec = get_preset(preset)
     try:
         report = analyze_file(local, spec)
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Không phân tích được file: {e}")
+    finally:
+        storage.cleanup_local(uploaded.file_path, local)
 
     errors = [
         AnalysisErrorOut(
@@ -67,15 +86,29 @@ def analyze_endpoint(file_id: int, preset: str | None = None, db: Session = Depe
     )
 
 
-@router.post("/{file_id}/fix")
-def fix_endpoint(file_id: int, preset: str | None = None, db: Session = Depends(get_db)):
-    local, uploaded = _get_local_path(db, file_id)
+@router.post("/{file_id}/fix", response_model=FileUrlResponse)
+def fix_endpoint(
+    file_id: int,
+    request: Request,
+    preset: str | None = None,
+    db: Session = Depends(get_db),
+):
+    uploaded = _get_uploaded(db, file_id)
+    storage = get_storage()
+    local = _localize(storage, uploaded)
     spec = get_preset(preset)
-    out_path = os.path.join(settings.UPLOAD_DIR, f"{uuid.uuid4().hex}.docx")
+
+    fd, tmp_out = tempfile.mkstemp(suffix=".docx")
+    os.close(fd)
+    key = f"{uuid.uuid4().hex}.docx"
     try:
-        fix_file(local, spec, out_path)
+        fix_file(local, spec, tmp_out)
+        ref = storage.save_file(key, tmp_out, content_type=DOCX_MEDIA_TYPE)
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Không chuẩn hóa được file: {e}")
+    finally:
+        storage.cleanup_local(uploaded.file_path, local)
+        _safe_remove(tmp_out)
     # COUNT DOWNLOAD
     stat = db.query(Statistic).filter(Statistic.id == 1).first()
 
@@ -86,22 +119,36 @@ def fix_endpoint(file_id: int, preset: str | None = None, db: Session = Depends(
     stat.total_downloads += 1
     db.commit()
     download_name = f"chuan-hoa_{uploaded.filename or 'document.docx'}"
-    return FileResponse(out_path, filename=download_name, media_type=DOCX_MEDIA_TYPE)
+    url = storage.presigned_url(ref, download_name=download_name) or _local_url(request, key)
+    return FileUrlResponse(url=url, filename=download_name)
 
 
 @router.post("/{file_id}/preview")
-def preview_endpoint(file_id: int, preset: str | None = None, db: Session = Depends(get_db)):
-    local, _ = _get_local_path(db, file_id)
+def preview_endpoint(
+    file_id: int,
+    preset: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Trả file .docx ĐÃ CHUẨN HÓA (bytes) để FE render bằng docx-preview.
+    Không còn convert PDF/LibreOffice. FE fetch endpoint này (cùng origin → CORS sẵn)."""
+    uploaded = _get_uploaded(db, file_id)
+    storage = get_storage()
+    local = _localize(storage, uploaded)
     spec = get_preset(preset)
-    out_dir = settings.UPLOAD_DIR
-    fixed_path = os.path.join(out_dir, f"{uuid.uuid4().hex}.docx")
+
+    fd, tmp_out = tempfile.mkstemp(suffix=".docx")
+    os.close(fd)
     try:
-        fix_file(local, spec, fixed_path)
-        pdf_path = docx_to_pdf(fixed_path, out_dir)
+        fix_file(local, spec, tmp_out)
+        with open(tmp_out, "rb") as f:
+            data = f.read()
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Không tạo được bản xem trước: {e}")
+    finally:
+        storage.cleanup_local(uploaded.file_path, local)
+        _safe_remove(tmp_out)
 
-    return FileResponse(pdf_path, media_type="application/pdf")
+    return Response(content=data, media_type=DOCX_MEDIA_TYPE)
 
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db)):

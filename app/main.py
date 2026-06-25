@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.endpoints.analyze import router as analyze_router
+from app.api.endpoints.files import router as files_router
 from app.api.endpoints.jobs import router as jobs_router
 from app.api.endpoints.upload import router as upload_router
 from app.api.endpoints.payment import router as payment_router
@@ -29,6 +30,7 @@ app.add_middleware(
 app.include_router(upload_router)
 app.include_router(analyze_router)
 app.include_router(jobs_router)
+app.include_router(files_router)
 app.include_router(payment_router, prefix="/payment")
 
 
