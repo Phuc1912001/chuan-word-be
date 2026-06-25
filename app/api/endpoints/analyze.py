@@ -10,6 +10,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
+from app.models.statistics import Statistic
 
 from app.db.session import get_db
 from app.models.file import UploadedFile
@@ -108,7 +109,15 @@ def fix_endpoint(
     finally:
         storage.cleanup_local(uploaded.file_path, local)
         _safe_remove(tmp_out)
+    # COUNT DOWNLOAD
+    stat = db.query(Statistic).filter(Statistic.id == 1).first()
 
+    if not stat:
+        stat = Statistic(id=1, total_downloads=0)
+        db.add(stat)
+
+    stat.total_downloads += 1
+    db.commit()
     download_name = f"chuan-hoa_{uploaded.filename or 'document.docx'}"
     url = storage.presigned_url(ref, download_name=download_name) or _local_url(request, key)
     return FileUrlResponse(url=url, filename=download_name)
@@ -140,3 +149,11 @@ def preview_endpoint(
         _safe_remove(tmp_out)
 
     return Response(content=data, media_type=DOCX_MEDIA_TYPE)
+
+@router.get("/stats")
+def get_stats(db: Session = Depends(get_db)):
+    stat = db.query(Statistic).filter(Statistic.id == 1).first()
+
+    return {
+        "total_downloads": stat.total_downloads if stat else 0
+    }
