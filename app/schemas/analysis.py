@@ -14,12 +14,19 @@ class AnalysisErrorOut(BaseModel):
     page: int | None = None
     paragraph_index: int | None = None
 
+class AnalysisGroupOut(BaseModel):
+    type: str
+    count: int
+    errors: list[AnalysisErrorOut]
+
 
 class AnalyzeResponse(BaseModel):
     file_id: int
     score: float
     total_errors: int
-    errors: list[AnalysisErrorOut] = []
+    summary: dict[str, int] = {}
+    groups: list[AnalysisGroupOut] = []
+
 
 
 class FileUrlResponse(BaseModel):
