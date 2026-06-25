@@ -150,6 +150,7 @@ def preview_endpoint(
 
     return Response(content=data, media_type=DOCX_MEDIA_TYPE)
 
+
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db)):
     stat = db.query(Statistic).filter(Statistic.id == 1).first()
