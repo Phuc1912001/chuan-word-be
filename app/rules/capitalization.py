@@ -16,32 +16,52 @@ _SENTENCE_END = (".", "!", "?")
 
 
 def _sentence_initial_indices(text: str) -> list[int]:
-    """Vị trí (index) chữ cái đầu của mỗi câu trong đoạn."""
+    """Vị trí chữ cái đầu MỖI CÂU: đầu đoạn, hoặc sau dấu . ! ? CÓ khoảng trắng
+    theo sau. Yêu cầu khoảng trắng để KHÔNG viết hoa nhầm trong 'GMO-Z.com',
+    '1.Tên mục', '3.14', 'a.b' — các dấu chấm không phải kết thúc câu."""
     idxs: list[int] = []
-    expect = True  # đầu đoạn là đầu câu
+    expect = True       # đầu đoạn là đầu câu
+    pending_end = False  # vừa gặp . ! ? — chờ khoảng trắng để xác nhận hết câu
     for i, ch in enumerate(text):
+        if ch.isspace():
+            if pending_end:
+                expect = True
+                pending_end = False
+            continue
         if expect and ch.isalpha():
             idxs.append(i)
             expect = False
+            pending_end = False
         elif ch in _SENTENCE_END:
-            expect = True
+            pending_end = True
+        else:
+            pending_end = False
     return idxs
 
 
 def _fix_paragraph(para) -> None:
-    """Viết hoa chữ cái đầu mỗi câu, đi qua từng run để giữ định dạng."""
-    expect = True
+    """Viết hoa chữ cái đầu mỗi câu; map vị trí theo para.text rồi sửa trong run
+    để giữ nguyên định dạng. Dùng cùng quy tắc ranh giới câu với check()."""
+    text = para.text
+    targets = {i for i in _sentence_initial_indices(text) if text[i].islower()}
+    if not targets:
+        return
+    pos = 0
     for run in para.runs:
-        if not run.text:
+        rt = run.text
+        if not rt:
             continue
-        chars = list(run.text)
-        for k, ch in enumerate(chars):
-            if expect and ch.isalpha():
-                chars[k] = ch.upper()
-                expect = False
-            elif ch in _SENTENCE_END:
-                expect = True
-        run.text = "".join(chars)
+        n = len(rt)
+        chunk = None
+        for ti in targets:
+            if pos <= ti < pos + n:
+                if chunk is None:
+                    chunk = list(rt)
+                k = ti - pos
+                chunk[k] = chunk[k].upper()
+        if chunk is not None:
+            run.text = "".join(chunk)
+        pos += n
 
 
 class CapitalizationRule:
