@@ -7,7 +7,7 @@ from app.rules.color import ColorRule
 from app.rules.component_style import ComponentStyleRule
 from app.rules.font import FontRule, FontSizeRule
 from app.rules.heading_number import HeadingNumberRule
-from app.rules.indent import IndentRule
+# from app.rules.indent import IndentRule
 from app.rules.margin import MarginRule
 from app.rules.page import PageSizeRule
 from app.rules.page_number import PageNumberRule
@@ -27,7 +27,7 @@ def default_rules() -> list[Rule]:
         PageSizeRule(),
         PageNumberRule(),
         AlignmentRule(),
-        IndentRule(),
+        # IndentRule(),
         HeadingNumberRule(),
         CapitalizationRule(),
     ]
