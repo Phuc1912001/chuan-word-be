@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 from app.models.statistics import Statistic
 from collections import Counter, defaultdict
+from pathlib import Path
 
 from app.db.session import get_db
 from app.models.file import UploadedFile
@@ -137,22 +138,40 @@ def fix_endpoint(
         fix_file(local, spec, tmp_out)
         ref = storage.save_file(key, tmp_out, content_type=DOCX_MEDIA_TYPE)
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Không chuẩn hóa được file: {e}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Không chuẩn hóa được file: {e}",
+        )
     finally:
         storage.cleanup_local(uploaded.file_path, local)
         _safe_remove(tmp_out)
-    # COUNT DOWNLOAD
     stat = db.query(Statistic).filter(Statistic.id == 1).first()
-
     if not stat:
         stat = Statistic(id=1, total_downloads=0)
         db.add(stat)
 
     stat.total_downloads += 1
     db.commit()
-    download_name = f"chuan-hoa_{uploaded.filename or 'document.docx'}"
-    url = storage.presigned_url(ref, download_name=download_name) or _local_url(request, key)
-    return FileUrlResponse(url=url, filename=download_name)
+
+    original_name = uploaded.filename or "document.docx"
+
+    if not original_name.lower().endswith(".docx"):
+        original_name = f"{Path(original_name).stem}.docx"
+
+    download_name = f"chuan-hoa_{original_name}"
+
+    url = (
+        storage.presigned_url(
+            ref,
+            download_name=download_name,
+        )
+        or _local_url(request, key)
+    )
+
+    return FileUrlResponse(
+        url=url,
+        filename=download_name,
+    )
 
 
 @router.post("/{file_id}/preview")
