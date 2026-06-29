@@ -13,7 +13,6 @@ from app.rules.page import PageSizeRule
 from app.rules.page_number import PageNumberRule
 from app.rules.paragraph_spacing import ParagraphSpacingRule
 from app.rules.spacing import LineSpacingRule
-from app.rules.spelling import SpellingRule
 
 
 def default_rules() -> list[Rule]:
@@ -31,5 +30,4 @@ def default_rules() -> list[Rule]:
         # IndentRule(),
         HeadingNumberRule(),
         CapitalizationRule(),
-        SpellingRule(),
     ]
