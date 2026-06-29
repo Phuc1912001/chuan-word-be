@@ -193,6 +193,8 @@ def test_spelling_rule_detects_common_vietnamese_errors(tmp_path):
 
     assert issues, "phải phát hiện lỗi chính tả"
     assert any(issue.rule_code == "SPELLING" for issue in issues)
+    assert any("khong" in issue.message.lower() for issue in issues)
+    assert any("không" in issue.suggestion for issue in issues)
 
     rule.fix(pd, get_preset())
     assert "không" in pd.paragraphs[0].text

@@ -29,11 +29,19 @@ TYPO_MAP = {
 }
 
 
+def _find_typos(text: str) -> list[tuple[str, str]]:
+    typos: list[tuple[str, str]] = []
+    for token in _WORD_RE.findall(text):
+        replacement = TYPO_MAP.get(token.lower())
+        if replacement is not None:
+            typos.append((token, replacement))
+    return typos
+
+
 def _replace_tokens(text: str) -> tuple[str, int]:
     def repl(match: re.Match[str]) -> str:
         token = match.group(0)
-        normalized = token.lower()
-        replacement = TYPO_MAP.get(normalized)
+        replacement = TYPO_MAP.get(token.lower())
         if replacement is None:
             return token
         if token[:1].isupper():
@@ -54,14 +62,14 @@ class SpellingRule:
             text = para.text
             if not text.strip():
                 continue
-            _, count = _replace_tokens(text)
-            if count:
+            typos = _find_typos(text)
+            for typo, replacement in typos:
                 issues.append(
                     Issue(
                         rule_code=self.code,
                         paragraph_index=i,
-                        message=f"Đoạn {i + 1}: có {count} từ có thể viết sai chính tả",
-                        suggestion="Sửa các từ sai chính tả theo chuẩn tiếng Việt",
+                        message=f"Từ '{typo}' có thể viết sai chính tả",
+                        suggestion=f"Đề xuất sửa thành '{replacement}'",
                     )
                 )
         return issues
