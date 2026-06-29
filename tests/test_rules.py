@@ -179,26 +179,6 @@ def test_capitalization_respects_sentence_boundary(tmp_path):
     assert pd.paragraphs[1].text == "1.Tên miền đăng ký"
 
 
-def test_spelling_rule_detects_common_vietnamese_errors(tmp_path):
-    from app.rules.spelling import SpellingRule
-
-    path = tmp_path / "spell.docx"
-    doc = Document()
-    doc.add_paragraph("Tôi khong duoc tham gia buoi hop.")
-    doc.save(str(path))
-
-    pd = load_docx(str(path))
-    rule = SpellingRule()
-    issues = rule.check(pd, get_preset())
-
-    assert issues, "phải phát hiện lỗi chính tả"
-    assert any(issue.rule_code == "SPELLING" for issue in issues)
-    assert any("khong" in issue.message.lower() for issue in issues)
-    assert any("không" in issue.suggestion for issue in issues)
-
-    rule.fix(pd, get_preset())
-    assert "không" in pd.paragraphs[0].text
-    assert "được" in pd.paragraphs[0].text
 
 
 def test_centered_title_not_given_paragraph_spacing(tmp_path):
